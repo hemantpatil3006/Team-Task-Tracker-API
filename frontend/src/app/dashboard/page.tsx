@@ -15,42 +15,61 @@ import {
   Calendar
 } from 'lucide-react';
 
-interface AnalyticsCompletion {
-  averageCompletionTimeDays: number | null;
-  completedTasksCount: number;
+interface UserAnalyticsCompletion {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  avgCompletionHours: number;
+  completedTaskCount: number;
 }
 
-interface AnalyticsOverdue {
-  overdueTasksCount: number;
-  overdueTasks: Array<{
+interface UserAnalyticsOverdue {
+  user: {
     id: string;
-    title: string;
-    dueDate: string;
-    project: { name: string };
-  }>;
+    name: string;
+    email: string;
+  } | null;
+  overdueCount: number;
 }
 
 export default function DashboardOverview() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [completionData, setCompletionData] = useState<AnalyticsCompletion | null>(null);
-  const [overdueData, setOverdueData] = useState<AnalyticsOverdue | null>(null);
+  const [completionData, setCompletionData] = useState<UserAnalyticsCompletion[] | null>(null);
+  const [overdueData, setOverdueData] = useState<UserAnalyticsOverdue[] | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
+        const isStaff = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
         const [projRes, completionRes, overdueRes] = await Promise.all([
-          fetchApi('/projects'),
-          fetchApi('/analytics/completion'),
-          fetchApi('/analytics/overdue'),
+          fetchApi('/projects').catch((err) => {
+            console.warn('[Dashboard] Error fetching projects:', err);
+            return { data: [] };
+          }),
+          isStaff
+            ? fetchApi('/analytics/completion').catch((err) => {
+                console.warn('[Dashboard] Error fetching completion analytics:', err);
+                return { data: [] };
+              })
+            : Promise.resolve({ data: [] }),
+          isStaff
+            ? fetchApi('/analytics/overdue').catch((err) => {
+                console.warn('[Dashboard] Error fetching overdue analytics:', err);
+                return { data: [] };
+              })
+            : Promise.resolve({ data: [] }),
         ]);
 
-        setProjects(projRes.data.slice(0, 3)); // show first 3 projects
-        setCompletionData(completionRes.data);
-        setOverdueData(overdueRes.data);
+        setProjects(projRes?.data ? projRes.data.slice(0, 3) : []);
+        setCompletionData(completionRes?.data || []);
+        setOverdueData(overdueRes?.data || []);
       } catch (err) {
-        console.error('[Dashboard] Error fetching analytics:', err);
+        console.warn('[Dashboard] Unexpected error loading dashboard data:', err);
       } finally {
         setLoading(false);
       }
@@ -70,11 +89,25 @@ export default function DashboardOverview() {
     );
   }
 
-  const overdueCount = overdueData?.overdueTasksCount || 0;
-  const completedCount = completionData?.completedTasksCount || 0;
-  const avgTime = completionData?.averageCompletionTimeDays !== null 
-    ? `${completionData?.averageCompletionTimeDays?.toFixed(1)} days` 
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
+  // Sum completed tasks count across all users
+  const completedCount = isStaff && completionData && Array.isArray(completionData)
+    ? completionData.reduce((sum, item) => sum + (item.completedTaskCount || 0), 0)
+    : 0;
+
+  // Calculate average resolution time (converting average hours to days)
+  const totalAvgHours = isStaff && completionData && Array.isArray(completionData) && completionData.length > 0
+    ? completionData.reduce((sum, item) => sum + (item.avgCompletionHours || 0), 0) / completionData.length
+    : 0;
+  const avgTime = totalAvgHours > 0
+    ? `${(totalAvgHours / 24).toFixed(1)} days`
     : 'N/A';
+
+  // Sum overdue tasks count across all users
+  const overdueCount = isStaff && overdueData && Array.isArray(overdueData)
+    ? overdueData.reduce((sum, item) => sum + (item.overdueCount || 0), 0)
+    : 0;
 
   return (
     <div style={styles.container} className="anim-fade-in">
@@ -203,23 +236,30 @@ export default function DashboardOverview() {
           <h3 style={{ marginBottom: '1.25rem' }}>Attention Required</h3>
           
           <div style={styles.overdueList}>
-            {overdueCount === 0 ? (
+            {!isStaff ? (
               <div style={styles.emptyOverdue}>
                 <CheckCircle2 size={32} color="#10b981" />
-                <p>All clean! You have no overdue tasks in this workspace.</p>
+                <p>Welcome! View your assigned tasks on the project board.</p>
+              </div>
+            ) : overdueCount === 0 ? (
+              <div style={styles.emptyOverdue}>
+                <CheckCircle2 size={32} color="#10b981" />
+                <p>All clean! No overdue tasks in this workspace.</p>
               </div>
             ) : (
-              overdueData?.overdueTasks.map((task) => (
-                <div key={task.id} style={styles.overdueItem} className="glass">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                    <span style={styles.overdueTitle}>{task.title}</span>
-                    <span style={styles.overdueProject}>{task.project.name}</span>
+              overdueData && Array.isArray(overdueData) && overdueData
+                .filter((item) => item.overdueCount > 0)
+                .map((item, index) => (
+                  <div key={item.user?.id || `unassigned-${index}`} style={styles.overdueItem} className="glass">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span style={styles.overdueTitle}>{item.user?.name || 'Unassigned Tasks'}</span>
+                      <span style={styles.overdueProject}>{item.user?.email || 'No email'}</span>
+                    </div>
+                    <span style={styles.overdueTag}>
+                      {item.overdueCount} overdue
+                    </span>
                   </div>
-                  <span style={styles.overdueTag}>
-                    Due {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              ))
+                ))
             )}
           </div>
         </div>
