@@ -3,6 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install OpenSSL (required by Prisma on Alpine)
+RUN apk add --no-cache openssl
+
 # Install dependencies first (layer caching)
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -22,6 +25,9 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# Install OpenSSL (required by Prisma on Alpine)
+RUN apk add --no-cache openssl
 
 # Install only production deps
 COPY package*.json ./
