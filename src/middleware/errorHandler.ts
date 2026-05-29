@@ -33,6 +33,16 @@ export function errorHandler(
     return;
   }
 
+  // Handle JSON parse errors from body-parser (e.g. missing commas)
+  if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+    res.status(400).json({
+      status: 400,
+      code: 'INVALID_JSON',
+      message: 'Invalid JSON payload in request body. Please check for missing commas or formatting errors.',
+    });
+    return;
+  }
+
   // Zod validation errors — format field-level messages
   if (err instanceof ZodError) {
     const messages = err.errors.map((e) => e.message).join('; ');
