@@ -1,26 +1,36 @@
-# Team Task Tracker API
+# Team Task Tracker (Monorepo)
 
-A production-quality REST API for team-based task management with **JWT authentication**, **role-based access control**, **Redis caching**, and full **Docker** containerization.
+A production-quality fullstack task tracker workspace consisting of:
+1. **Backend REST API**: Built with Node.js, Express, TypeScript, PostgreSQL, and Redis caching.
+2. **Frontend SaaS Client**: Built with Next.js (App Router), TypeScript, and styled with premium custom Dark-Glassmorphism CSS.
 
 ---
 
 ## Quick Start
 
+### 1. Start the Backend Infrastructure (Docker)
+Ensure Docker Desktop is running, then start the database, cache, and API:
 ```bash
-# Clone the repo
-git clone <your-repo-url>
-cd team-task-tracker
-
-# Start everything (API + PostgreSQL + Redis)
-docker compose up
+# Start all backend services in detached mode
+docker compose up -d
 ```
-
-That's it. The API will be available at **http://localhost:3000**
-
-- **Swagger UI**: http://localhost:3000/api/docs
+The API is live at **http://localhost:3000**
+- **Swagger Documentation**: http://localhost:3000/api/docs
 - **Health check**: http://localhost:3000/health
 
-> **Note**: On first run, Docker will build the image, run database migrations, and seed demo data automatically. This takes ~60 seconds.
+> **Note**: First startup builds the image, migrates the database, and seeds demo data automatically (~30-60s).
+
+### 2. Start the Frontend SaaS Client (Local)
+Ensure you have Node.js installed, then start the Next.js client:
+```bash
+# Navigate to the frontend directory
+cd frontend
+
+# Install dependencies and start the development server
+npm install
+npm run dev
+```
+The SaaS client is live at **http://localhost:3001** (or http://localhost:3000 if backend is not running, but since the backend binds to 3000, Next.js will auto-bind to 3001).
 
 ---
 
@@ -32,7 +42,7 @@ That's it. The API will be available at **http://localhost:3000**
 | MANAGER | manager@demo.com     | Manager1234!  |
 | MEMBER  | member@demo.com      | Member1234!   |
 
-**To get a token:**
+**To get a token manually:**
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
@@ -390,8 +400,5 @@ Tests cover:
    for better performance on large datasets (offset pagination gets slower as
    page number grows).
 
-6. **Frontend** — A Next.js kanban board showing task cards by status column
-   with drag-and-drop to trigger status transitions.
-
-7. **CI/CD** — GitHub Actions workflow for lint + test on PR, build + push
+6. **CI/CD** — GitHub Actions workflow for lint + test on PR, build + push
    Docker image to GHCR on merge to main.
