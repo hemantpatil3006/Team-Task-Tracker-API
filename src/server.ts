@@ -11,8 +11,8 @@ async function main() {
 
   // Verify Redis connection
   const redis = getRedisClient();
-  await redis.connect();
-  console.log('[Redis] Connection verified');
+  await redis.ping();
+  console.log('[Redis] Connected');
 
   const server = app.listen(config.port, () => {
     console.log(`\n🚀 Team Task Tracker API`);
