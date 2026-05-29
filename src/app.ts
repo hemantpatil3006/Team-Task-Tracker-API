@@ -45,7 +45,24 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan('dev'));
 }
 
-// ─── Health Check ────────────────────────────────────────────────────────────
+// ─── Welcome & Health Checks ──────────────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    message: 'Welcome to the Team Task Tracker API! 🚀',
+    documentation: '/api/docs',
+    health: '/health',
+    version: '1.0.0',
+  });
+});
+
+app.get('/api/v1', (_req, res) => {
+  res.json({
+    message: 'Team Task Tracker API v1 is active! 🚀',
+    documentation: '/api/docs',
+    health: '/health',
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
